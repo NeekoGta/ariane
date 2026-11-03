@@ -2614,18 +2614,28 @@ uiMapsPopup(void)
 	if(unsaved)
 		ImGui::TextColored(warning, "Unsaved changes of the open map will be discarded. Save first to keep them.");
 
+	// The open map must have a name before another one takes its place.
+	bool needsName = current.empty() && hasFiles && !MapProjects::IsValidName(gUnnamedMapName);
+	if(needsName)
+		ImGui::TextColored(warning, "Name the open map above (letters, digits, spaces, '-' or '_') to create or open another map.");
+	if(!gMapsMessage.empty())
+		ImGui::TextColored(warning, "%s", gMapsMessage.c_str());
+
 	ImGui::Separator();
 	ImGui::Text("New empty map, from the stock map");
 	ImGui::SetNextItemWidth(260.0f);
-	ImGui::InputTextWithHint("##newmap", "Name", gNewMapName, sizeof(gNewMapName));
+	ImGui::InputTextWithHint("##newmap", "Name of the new map", gNewMapName, sizeof(gNewMapName));
 	ImGui::SameLine();
+	ImGui::BeginDisabled(needsName || !MapProjects::IsValidName(gNewMapName));
 	if(ImGui::Button(unsaved ? "Discard Changes and Create" : "Create"))
 		switchMapFromUi(nil, gNewMapName);
+	ImGui::EndDisabled();
 
 	ImGui::Separator();
 	ImGui::Text("Stored maps");
 	if(gStoredMaps.empty())
 		ImGui::TextDisabled("No stored map.");
+	ImGui::BeginDisabled(needsName);
 	for(const std::string &map : gStoredMaps){
 		ImGui::PushID(map.c_str());
 		ImGui::BulletText("%s", map.c_str());
@@ -2634,11 +2644,7 @@ uiMapsPopup(void)
 			switchMapFromUi(map.c_str(), nil);
 		ImGui::PopID();
 	}
-
-	if(!gMapsMessage.empty()){
-		ImGui::Spacing();
-		ImGui::TextColored(warning, "%s", gMapsMessage.c_str());
-	}
+	ImGui::EndDisabled();
 	EndEditorDialog();
 }
 
