@@ -85,7 +85,7 @@ int main(int argc, char **argv)
 	gRoot = argv[1];
 	StockMap map;
 	assert(LoadStockMap(openFile, map));
-	assert(map.numTextFiles == 1 && map.numBinaryFiles == 1);
+	assert(map.numTextFiles == 1 && map.numBinaryFiles == 1);	// crack.ipl: missions only
 	assert(map.insts.size() == 5);	// the undefined model is skipped
 	assert(map.insts[1].lod == 0);	// text LOD ordinal, the comment does not count
 	assert(map.insts[4].lod == 0);	// stream LOD reference into test.ipl
@@ -143,13 +143,13 @@ int main(int argc, char **argv)
 	scene[3].p.x += 0.005f;
 	assert(BuildPawn(map, scene, options, name).numCreated == 0);
 
-	// New objects: SA-MP's own model, custom model commented out.
+	// New objects: stock model, custom model (the editor imports them from 18631) commented out.
 	scene = stock;
-	scene.push_back(obj(19000, 10, 20, 30, 0, 0, 0, 1));
-	scene.push_back(obj(50000, 11, 21, 31, 0, 0, 0, 1));
+	scene.push_back(obj(1002, 10, 20, 30, 0, 0, 0, 1));
+	scene.push_back(obj(18631, 11, 21, 31, 0, 0, 0, 1));
 	r = BuildPawn(map, scene, options, name);
 	assert(r.numCreated == 1 && r.numCustom == 1);
-	assert(has(r, "\nCreateDynamicObject(19000,") && has(r, "\n// CreateDynamicObject(50000,") && has(r, "AddSimpleModel"));
+	assert(has(r, "\nCreateDynamicObject(1002, 10.0000,") && has(r, "\n// CreateDynamicObject(18631,") && has(r, "AddSimpleModel"));
 
 	// Area filter.
 	options.useArea = true;
@@ -187,7 +187,8 @@ class SampExportTests(unittest.TestCase):
             (root / 'DATA/MAPS/TEST.IPL').write_text(TEST_IPL)
             stream = binary_ipl([(300, 300, 1, 0, 0, 0, 1, 1003, 0, -1),
                                  (110, 100, 10, 0, 0, 0, 1, 1000, 0, 0)])
-            (root / 'MODELS/GTA3.IMG').write_bytes(img_archive([('test_stream0.ipl', stream)]))
+            mission = binary_ipl([(400, 400, 1, 0, 0, 0, 1, 1003, 0, -1)])
+            (root / 'MODELS/GTA3.IMG').write_bytes(img_archive([('test_stream0.ipl', stream), ('crack.ipl', mission)]))
 
             main = Path(tmp) / 'main.cpp'
             main.write_text(FIXTURE)

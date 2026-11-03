@@ -9,8 +9,6 @@
 
 namespace SampExport {
 
-static const int SAMP_FIRST_MODEL = 18631;	// SA-MP's own objects (samp.img)
-static const int SAMP_LAST_MODEL = 19999;
 static const float MATCH_DISTANCE = 0.02f;
 static const float MATCH_ROTATION = 0.9999f;	// |dot| of the quaternions, about 1.6 degrees
 static const float GRID_CELL = 8.0f;
@@ -196,17 +194,19 @@ struct Loader
 		memcpy(&offsetInst, &data[0x1C], 4);
 		if(fourcc != 0x79726E62)	// "bnry"
 			return;
-		map.numBinaryFiles++;
 
+		// Only the streams are part of the map: the other binary IPLs
+		// (barriers1, crack, carter...) are loaded by the missions only.
 		// "lae_stream0" references the placements of the text IPL "lae".
 		std::string base = baseName(entryName);
 		size_t stream = base.find("_stream");
+		if(stream == std::string::npos)
+			return;
+		map.numBinaryFiles++;
 		const std::vector<int> *ordinals = nullptr;
-		if(stream != std::string::npos){
-			auto it = textOrdinals.find(base.substr(0, stream));
-			if(it != textOrdinals.end())
-				ordinals = &it->second;
-		}
+		auto it = textOrdinals.find(base.substr(0, stream));
+		if(it != textOrdinals.end())
+			ordinals = &it->second;
 
 		for(uint32_t i = 0; i < numInst; i++){
 			size_t at = offsetInst + (size_t)i * 40;
@@ -487,9 +487,9 @@ BuildPawn(const StockMap &map, const std::vector<SceneObject> &scene,
 		}
 	}
 
+	// Not in the stock IDE files: imported in the editor (its ids start at
+	// 18631 by default, as SA-MP's own objects, so the id range tells nothing).
 	auto isCustom = [&](int modelId) {
-		if(modelId >= SAMP_FIRST_MODEL && modelId <= SAMP_LAST_MODEL)
-			return false;
 		return !map.definedModels.empty() && map.definedModels.count(modelId) == 0;
 	};
 
