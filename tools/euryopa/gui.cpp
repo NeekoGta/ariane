@@ -5,6 +5,7 @@
 #include "object_categories.h"
 #include "updater.h"
 #include "icons.h"
+#include "sampexport.h"
 #include <cmath>
 #include <string>
 #include <unordered_set>
@@ -31,6 +32,7 @@ static bool showViewWindow;
 static bool showRenderingWindow;
 static bool showBrowserWindow;
 static bool showDiffWindow;
+static bool showSampExportWindow;
 static bool showToolsWindow = true;
 static bool gSaNodeJustSelected;
 static bool gBrowserIdeListDirty = true;
@@ -3914,6 +3916,7 @@ uiMainmenu(void)
 			if(ImGui::MenuItem(ICON_FA_PEN " Editor", "E", showEditorWindow)) { showEditorWindow ^= 1; }
 			if(ImGui::MenuItem(ICON_FA_MAGNIFYING_GLASS " Object Browser", "B", showBrowserWindow)) { showBrowserWindow ^= 1; }
 				if(ImGui::MenuItem(ICON_FA_CODE_COMPARE " Changes", "F", showDiffWindow)) { showDiffWindow ^= 1; }
+				if(ImGui::MenuItem(ICON_FA_FILE_EXPORT " SA-MP Export", nil, showSampExportWindow)) { showSampExportWindow ^= 1; }
 				if(ImGui::MenuItem(ICON_FA_LIST " Log ", nil, showLogWindow)) { showLogWindow ^= 1; }
 				if(ImGui::MenuItem(ICON_FA_LIST " Keyboard Shortcuts", nil, showShortcutsWindow)) { showShortcutsWindow ^= 1; }
 				if(ImGui::MenuItem(ICON_FA_CIRCLE_QUESTION " Help", nil, showHelpWindow)) { showHelpWindow ^= 1; }
@@ -6096,6 +6099,8 @@ loadSaveSettings(void)
 			if(parseBoolSetting(value, &boolValue)) showBrowserWindow = boolValue;
 		}else if(strcmp(key, "show_diff_window") == 0){
 			if(parseBoolSetting(value, &boolValue)) showDiffWindow = boolValue;
+		}else if(strcmp(key, "show_samp_export_window") == 0){
+			if(parseBoolSetting(value, &boolValue)) showSampExportWindow = boolValue;
 		}else if(strcmp(key, "show_tools_window") == 0){
 			if(parseBoolSetting(value, &boolValue)) showToolsWindow = boolValue;
 		}else if(strcmp(key, "toast_enabled") == 0){
@@ -6433,6 +6438,7 @@ saveSaveSettings(void)
 	fprintf(f, "show_rendering_window %d\n", showRenderingWindow ? 1 : 0);
 	fprintf(f, "show_browser_window %d\n", showBrowserWindow ? 1 : 0);
 	fprintf(f, "show_diff_window %d\n", showDiffWindow ? 1 : 0);
+	fprintf(f, "show_samp_export_window %d\n", showSampExportWindow ? 1 : 0);
 	fprintf(f, "show_tools_window %d\n", showToolsWindow ? 1 : 0);
 	fprintf(f, "toast_enabled %d\n", toastEnabled ? 1 : 0);
 	for(int i = 0; i < TOAST_NUM_CATEGORIES; i++)
@@ -8352,6 +8358,7 @@ gui(void)
 
 	if(!CPad::IsCtrlDown() && CPad::IsKeyJustDown('F')) showDiffWindow ^= 1;
 	if(showDiffWindow) uiDiffWindow();
+	if(showSampExportWindow) uiSampExportWindow(&showSampExportWindow);
 
 	if(CPad::IsKeyJustDown('B')){
 		showBrowserWindow ^= 1;

@@ -34,6 +34,13 @@ Use it as a regular map editor, or let your AI explore and edit alongside you.
 - Review changes made since the last save and recover work from automatic backups
 - Test GTA III, Vice City and San Andreas maps in game, and hot-reload supported San Andreas changes with `ariane.asi`
 
+### SA-MP / open.mp export
+
+- Window > SA-MP Export turns the map changes into Pawn code, compared with the stock map read from the game files (modloader ignored)
+- Removed, moved or rotated stock objects give `RemoveBuildingForPlayer`, and the LODs left without their building can be removed too
+- New placements give `CreateDynamicObject` (Streamer) or `CreateObject`; custom models are listed for `AddSimpleModel`
+- Export everything or only around a point, then copy the code or save it as a `.pwn` file
+
 ### World tools
 
 - Edit San Andreas water and path nodes
