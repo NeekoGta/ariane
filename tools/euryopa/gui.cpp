@@ -6,6 +6,7 @@
 #include "updater.h"
 #include "icons.h"
 #include "sampexport.h"
+#include "mapprojects.h"
 #include <cmath>
 #include <string>
 #include <unordered_set>
@@ -2537,6 +2538,110 @@ uiReloadGamePopup(void)
 	EndEditorDialog();
 }
 
+static bool gOpenMaps = false;
+static bool gShowMaps = false;
+static char gUnnamedMapName[49];
+static char gRenameMapName[49];
+static char gNewMapName[49];
+static std::vector<std::string> gStoredMaps;
+static std::string gMapsMessage;
+
+static void
+switchMapFromUi(const char *openName, const char *newName)
+{
+	finishTransformPanelEdit();
+	std::string error;
+	if(!MapProjects::Switch(gUnnamedMapName, openName, newName, error)){
+		gMapsMessage = error;
+		return;
+	}
+	if(!RestartAriane())
+		gMapsMessage = "The map folders were switched, but Ariane could not restart. Restart it manually.";
+}
+
+static void
+uiMapsPopup(void)
+{
+	if(gOpenMaps){
+		gShowMaps = true;
+		gOpenMaps = false;
+		snprintf(gRenameMapName, sizeof(gRenameMapName), "%s", MapProjects::CurrentName().c_str());
+		gStoredMaps = MapProjects::StoredMaps();
+		gMapsMessage.clear();
+		ImGui::SetNextWindowFocus();
+	}
+
+	if(!BeginEditorDialog("Maps", &gShowMaps, ImGuiWindowFlags_NoSavedSettings))
+		return;
+
+	const ImVec4 warning(1.0f, 0.65f, 0.20f, 1.0f);
+	if(!MapProjects::IsAvailable()){
+		ImGui::TextWrapped("Maps need Mod Loader: no modloader folder was found in the game folder.");
+		EndEditorDialog();
+		return;
+	}
+
+	ImGui::TextWrapped("The open map is saved in modloader/Ariane: Ariane and the game load it. "
+	                   "The other maps are stored in ariane/maps and are not loaded. "
+	                   "Opening or creating a map restarts Ariane.");
+	if(gSaveDestination != SAVE_DESTINATION_MODLOADER)
+		ImGui::TextColored(warning, "Save Target is \"Loaded source files\": your edits go to the game files,\n"
+		                   "not to the open map. Choose modloader/Ariane in File > Save Target.");
+	ImGui::Separator();
+
+	std::string current = MapProjects::CurrentName();
+	bool hasFiles = MapProjects::HasOpenMapFiles();
+	if(current.empty()){
+		ImGui::Text(hasFiles ? "Open map: unnamed" : "Open map: none (stock map, nothing saved yet)");
+		if(hasFiles){
+			ImGui::SetNextItemWidth(260.0f);
+			ImGui::InputTextWithHint("##unnamed", "Name of the open map", gUnnamedMapName, sizeof(gUnnamedMapName));
+			ImGui::SameLine();
+			ImGui::TextDisabled("needed to store it");
+		}
+	}else{
+		ImGui::Text("Open map: %s", current.c_str());
+		ImGui::SetNextItemWidth(260.0f);
+		ImGui::InputText("##rename", gRenameMapName, sizeof(gRenameMapName));
+		ImGui::SameLine();
+		if(ImGui::Button("Rename")){
+			std::string error;
+			gMapsMessage = MapProjects::RenameCurrent(gRenameMapName, error) ? std::string() : error;
+		}
+	}
+
+	bool unsaved = hasUnsavedEditorWork();
+	if(unsaved)
+		ImGui::TextColored(warning, "Unsaved changes of the open map will be discarded. Save first to keep them.");
+
+	ImGui::Separator();
+	ImGui::Text("New empty map, from the stock map");
+	ImGui::SetNextItemWidth(260.0f);
+	ImGui::InputTextWithHint("##newmap", "Name", gNewMapName, sizeof(gNewMapName));
+	ImGui::SameLine();
+	if(ImGui::Button(unsaved ? "Discard Changes and Create" : "Create"))
+		switchMapFromUi(nil, gNewMapName);
+
+	ImGui::Separator();
+	ImGui::Text("Stored maps");
+	if(gStoredMaps.empty())
+		ImGui::TextDisabled("No stored map.");
+	for(const std::string &map : gStoredMaps){
+		ImGui::PushID(map.c_str());
+		ImGui::BulletText("%s", map.c_str());
+		ImGui::SameLine(320.0f);
+		if(ImGui::SmallButton(unsaved ? "Discard Changes and Open" : "Open"))
+			switchMapFromUi(map.c_str(), nil);
+		ImGui::PopID();
+	}
+
+	if(!gMapsMessage.empty()){
+		ImGui::Spacing();
+		ImGui::TextColored(warning, "%s", gMapsMessage.c_str());
+	}
+	EndEditorDialog();
+}
+
 struct FileRollbackEntry
 {
 	std::string path;
@@ -3896,6 +4001,9 @@ uiMainmenu(void)
 			}
 			ImGui::SetItemTooltip("Import a custom DFF/TXD into the editor as a new placeable object.\nAutomatically registers it in your game files, ready to use in game.");
 			ImGui::Separator();
+			if(ImGui::MenuItem(ICON_FA_FOLDER_OPEN " Maps..."))
+				gOpenMaps = true;
+			ImGui::SetItemTooltip("Create a new map from the stock map, or open a stored one.\nEach map keeps its own modloader/Ariane folder.");
 			if(ImGui::MenuItem(ICON_FA_ROTATE " Reload Game Files...")){
 				finishTransformPanelEdit();
 				if(!gConfirmReloadGame && !hasUnsavedEditorWork())
@@ -3993,6 +4101,7 @@ uiMainmenu(void)
 	uiImportPrefabPopup();
 	uiCustomImportPopup();
 	uiReloadGamePopup();
+	uiMapsPopup();
 }
 
 static void

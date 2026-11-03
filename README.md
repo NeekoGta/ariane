@@ -34,6 +34,11 @@ Use it as a regular map editor, or let your AI explore and edit alongside you.
 - Review changes made since the last save and recover work from automatic backups
 - Test GTA III, Vice City and San Andreas maps in game, and hot-reload supported San Andreas changes with `ariane.asi`
 
+### Maps
+
+- File > Maps... keeps several maps apart: the open map is saved in `modloader/Ariane` (loaded by Ariane and the game), the other ones are stored in `ariane/maps` and are not loaded
+- Create a new empty map from the stock map, open a stored one or rename the open one; Ariane restarts on the map chosen
+
 ### SA-MP / open.mp export
 
 - Window > SA-MP Export turns the map changes into Pawn code, compared with the stock map read from the game files (modloader ignored)
