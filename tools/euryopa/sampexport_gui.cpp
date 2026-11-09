@@ -2,6 +2,7 @@
 #include "imgui/imgui.h"
 #include "modloader.h"
 #include "sampexport.h"
+#include "materials.h"
 #include "icons.h"
 
 // The SA-MP export window: the stock map is read once (it takes a moment),
@@ -61,6 +62,9 @@ generateExport(void)
 		          inst->m_translation.x, inst->m_translation.y, inst->m_translation.z,
 		          inst->m_rotation.x, inst->m_rotation.y, inst->m_rotation.z, inst->m_rotation.w,
 		          inst->m_area };
+		if(const std::vector<MaterialOverride> *mats = Materials::Get(inst))
+			for(const MaterialOverride &m : *mats)
+				obj.materials.push_back({ m.index, m.modelId, m.txd, m.texture, m.color });
 		scene.push_back(obj);
 	}
 

@@ -1,5 +1,7 @@
 #include "euryopa.h"
 #include "modloader.h"
+#include "bridge.h"
+#include "materials.h"
 #include <limits.h>
 #include <algorithm>
 #include <stdlib.h>
@@ -2281,6 +2283,8 @@ LoadGame(void)
 		InsertInstIntoSectors(inst);
 		instCount++;
 	}
+	Materials::Load();
+	Bridge::Ready();
 
 	// hide the islands
 	ObjectDef *obj;
@@ -2668,6 +2672,8 @@ Draw(void)
 		}
 	}
 
+	Bridge::Process();
+
 	LoadAllRequestedObjects();
 	BuildRenderList();
 
@@ -2777,6 +2783,7 @@ Draw(void)
 	rw::SetRenderState(rw::ALPHATESTFUNC, rw::ALPHAALWAYS);	// don't mess up GUI
 	// This fucks up the z buffer, but what else can we do?
 	RenderDebugLines();
+	Bridge::Capture();	// the 3D view, without the editor windows
 	ImGui::EndFrame();
 	ImGui::Render();
 

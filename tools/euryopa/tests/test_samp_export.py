@@ -151,6 +151,20 @@ int main(int argc, char **argv)
 	assert(r.numCreated == 1 && r.numCustom == 1);
 	assert(has(r, "\nCreateDynamicObject(1002, 10.0000,") && has(r, "\n// CreateDynamicObject(18631,") && has(r, "AddSimpleModel"));
 
+	// Retextured: a stock object becomes removed + created, with its materials.
+	std::vector<SceneObject> retextured = stock;
+	retextured[3].materials.push_back({ 0, 18888, "bigtxd", "bricks", 0xFFFF0000u });
+	retextured[3].materials.push_back({ 2, -1, "none", "none", 0x80FFFFFFu });
+	r = BuildPawn(map, retextured, options, name);
+	assert(r.numRemoved == 1 && r.numCreated == 1 && has(r, "new tmpobjid;\n"));
+	assert(has(r, "tmpobjid = CreateDynamicObject(1003, 300.0000, 300.0000, 1.0000,"));
+	assert(has(r, "\nSetDynamicObjectMaterial(tmpobjid, 0, 18888, \"bigtxd\", \"bricks\", 0xFFFF0000);\n"));
+	assert(has(r, "\nSetDynamicObjectMaterial(tmpobjid, 2, -1, \"none\", \"none\", 0x80FFFFFF);\n"));
+	options.function = FUNC_NATIVE;
+	r = BuildPawn(map, retextured, options, name);
+	assert(has(r, "tmpobjid = CreateObject(1003,") && has(r, "\nSetObjectMaterial(tmpobjid, 0, 18888,"));
+	options.function = FUNC_STREAMER;
+
 	// Area filter.
 	options.useArea = true;
 	options.areaX = 300.0f; options.areaY = 300.0f; options.areaRadius = 50.0f;
@@ -204,7 +218,8 @@ class SampExportTests(unittest.TestCase):
                 command = [cxx, '-std=c++11', '-I', str(EURYOPA), str(main),
                            str(EURYOPA / 'sampexport.cpp'), '-o', str(exe)]
             subprocess.run(command, check=True)
-            result = subprocess.run([str(exe), str(root)], check=True, capture_output=True, text=True)
+            result = subprocess.run([str(exe), str(root)], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.strip(), 'ok')
 
 

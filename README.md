@@ -45,6 +45,25 @@ Use it as a regular map editor, or let your AI explore and edit alongside you.
 - Removed, moved or rotated stock objects give `RemoveBuildingForPlayer`, and the LODs left without their building can be removed too
 - New placements give `CreateDynamicObject` (Streamer) or `CreateObject`; custom models are listed for `AddSimpleModel`
 - Export everything or only around a point, then copy the code or save it as a `.pwn` file
+- Retextured objects come with their `SetDynamicObjectMaterial` / `SetObjectMaterial` lines
+
+### SA-MP materials
+
+- Object Info > Materials (SA-MP) retextures the selected object only, as `SetObjectMaterial` in game: per material index, a texture of any TXD and/or an ARGB colour
+- Pick the texture from the TXD list (with a preview), or paste a `SetDynamicObjectMaterial(...)` line
+- The retextures are saved with the map (Ctrl+S) in `modloader/Ariane/ariane.materials`, so each map of File > Maps keeps its own
+
+### AI bridge (MCP)
+
+Window > AI Bridge (on by default) lets an AI assistant such as Claude Code edit the open map, live: look around and take screenshots, search models, place, move, rotate, delete and retexture objects, undo, save. Ariane listens on `127.0.0.1:47811` only (`ARIANE_BRIDGE_PORT` to change it); every change goes through the undo history.
+
+The MCP server is `tools/mcp/ariane_mcp.py` (Python 3.8+, standard library only). To add it to Claude Code:
+
+```sh
+claude mcp add ariane -- python D:/sa-mp/ariane/tools/mcp/ariane_mcp.py
+```
+
+Then start Ariane in the game folder and ask, for example: "place three benches facing the sea along this path, then show me".
 
 ### World tools
 

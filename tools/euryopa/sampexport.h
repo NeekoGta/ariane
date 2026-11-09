@@ -8,7 +8,8 @@
 // so they survive saves and editor restarts:
 //   - a stock placement no longer in the scene  -> RemoveBuildingForPlayer
 //   - a scene placement missing from stock map  -> CreateDynamicObject/CreateObject
-// A moved or rotated stock object gives both.
+// A moved, rotated or retextured stock object gives both (a building cannot be
+// retextured in game: it is replaced by an object).
 //
 // The core below has no dependency on librw or on the editor state, so it can
 // be tested on its own (tests/test_samp_export.py).
@@ -51,9 +52,20 @@ typedef std::function<FILE*(const std::string &logicalPath)> OpenFileFn;
 
 bool LoadStockMap(const OpenFileFn &open, StockMap &map);
 
+// SetObjectMaterial / SetDynamicObjectMaterial of an object.
+struct Material
+{
+	int index;
+	int modelId;
+	std::string txd;
+	std::string texture;
+	unsigned int color;	// ARGB
+};
+
 struct SceneObject
 {
 	Placement p;
+	std::vector<Material> materials;
 };
 
 enum ObjectFunction

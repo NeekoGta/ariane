@@ -1,6 +1,7 @@
 #define WITH_D3D
 #include "euryopa.h"
 #include "templates.h"
+#include "materials.h"
 #include <algorithm>
 #include <vector>
 
@@ -571,10 +572,12 @@ RenderInst(ObjectInst *inst)
 	highlightAlpha = inst->m_highlight == HIGHLIGHT_SELECTION ?
 		(uint8)(gSelectionHighlightOpacity * 255 / 100) : 128;
 
+	Materials::BeginRender(inst);
 	if(obj->m_type == ObjectDef::ATOMIC)
 		((rw::Atomic*)inst->m_rwObject)->render();
 	else if(obj->m_type == ObjectDef::CLUMP)
 		((rw::Clump*)inst->m_rwObject)->render();
+	Materials::EndRender();
 
 	highlightColor = black;
 	if(obj->m_noBackfaceCulling)

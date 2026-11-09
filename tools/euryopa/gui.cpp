@@ -7,6 +7,8 @@
 #include "icons.h"
 #include "sampexport.h"
 #include "mapprojects.h"
+#include "materials.h"
+#include "bridge.h"
 #include <cmath>
 #include <string>
 #include <unordered_set>
@@ -1848,7 +1850,12 @@ saveAllIpls(const char *onlyScene = nil)
 		}
 	}
 
-	return waterSaveOk &&
+	// The SA-MP retextures, keyed by the positions just saved.
+	bool materialsSaveOk = Materials::Save();
+	if(!materialsSaveOk)
+		Toast(TOAST_SAVE, "Could not write %s", Materials::FilePath().c_str());
+
+	return waterSaveOk && materialsSaveOk &&
 	       binaryResult.numBlockedEmptyDeletes == 0 &&
 	       binaryResult.numFailedImages == 0 &&
 	       binaryResult.numFailedFiles == 0;
@@ -1885,6 +1892,15 @@ toastCurrentMapSaved(void)
 		         displayPath);
 	else
 		ToastFor(TOAST_SAVE, 5.0f, "Saved directly to %s", displayPath);
+}
+
+bool
+SaveMapFromBridge(void)
+{
+	bool ok = saveCurrentMap();
+	if(ok)
+		toastCurrentMapSaved();
+	return ok;
 }
 
 static void
@@ -2802,7 +2818,8 @@ hasUnsavedEditorWork(void)
 			return true;
 	}
 	return (params.water == GAME_SA && WaterLevel::gWaterDirty) ||
-	       (gameversion == GAME_SA && SAPaths::HasDirtyAreas());
+	       (gameversion == GAME_SA && SAPaths::HasDirtyAreas()) ||
+	       Materials::IsDirty();
 }
 
 static bool
@@ -4081,6 +4098,15 @@ uiMainmenu(void)
 			if(ImGui::MenuItem(ICON_FA_MAGNIFYING_GLASS " Object Browser", "B", showBrowserWindow)) { showBrowserWindow ^= 1; }
 				if(ImGui::MenuItem(ICON_FA_CODE_COMPARE " Changes", "F", showDiffWindow)) { showDiffWindow ^= 1; }
 				if(ImGui::MenuItem(ICON_FA_FILE_EXPORT " SA-MP Export", nil, showSampExportWindow)) { showSampExportWindow ^= 1; }
+				if(ImGui::MenuItem(ICON_FA_WRENCH " AI Bridge", nil, Bridge::IsEnabled()))
+					Bridge::SetEnabled(!Bridge::IsEnabled());
+				if(Bridge::IsRunning())
+					ImGui::SetItemTooltip("Lets an AI assistant (Claude Code, tools/mcp) edit this map.\n"
+					                      "Listening on 127.0.0.1:%d, %d command(s) so far.",
+					                      Bridge::Port(), Bridge::NumCommands());
+				else
+					ImGui::SetItemTooltip("Lets an AI assistant (Claude Code, tools/mcp) edit this map.\n%s",
+					                      Bridge::IsEnabled() ? Bridge::LastError() : "Off.");
 				if(ImGui::MenuItem(ICON_FA_LIST " Log ", nil, showLogWindow)) { showLogWindow ^= 1; }
 				if(ImGui::MenuItem(ICON_FA_LIST " Keyboard Shortcuts", nil, showShortcutsWindow)) { showShortcutsWindow ^= 1; }
 				if(ImGui::MenuItem(ICON_FA_CIRCLE_QUESTION " Help", nil, showHelpWindow)) { showHelpWindow ^= 1; }
@@ -6295,6 +6321,8 @@ loadSaveSettings(void)
 			if(parseBoolSetting(value, &boolValue)) showDiffWindow = boolValue;
 		}else if(strcmp(key, "show_samp_export_window") == 0){
 			if(parseBoolSetting(value, &boolValue)) showSampExportWindow = boolValue;
+		}else if(strcmp(key, "ai_bridge") == 0){
+			if(parseBoolSetting(value, &boolValue)) Bridge::SetEnabled(boolValue);
 		}else if(strcmp(key, "show_tools_window") == 0){
 			if(parseBoolSetting(value, &boolValue)) showToolsWindow = boolValue;
 		}else if(strcmp(key, "toast_enabled") == 0){
@@ -6633,6 +6661,7 @@ saveSaveSettings(void)
 	fprintf(f, "show_browser_window %d\n", showBrowserWindow ? 1 : 0);
 	fprintf(f, "show_diff_window %d\n", showDiffWindow ? 1 : 0);
 	fprintf(f, "show_samp_export_window %d\n", showSampExportWindow ? 1 : 0);
+	fprintf(f, "ai_bridge %d\n", Bridge::IsEnabled() ? 1 : 0);
 	fprintf(f, "show_tools_window %d\n", showToolsWindow ? 1 : 0);
 	fprintf(f, "toast_enabled %d\n", toastEnabled ? 1 : 0);
 	for(int i = 0; i < TOAST_NUM_CATEGORIES; i++)
@@ -7512,6 +7541,8 @@ uiInstWindow(void)
 			uiInstInfo(inst);
 		if(ImGui::CollapsingHeader("Object"))
 			uiObjInfo(obj);
+		if(ImGui::CollapsingHeader("Materials (SA-MP)"))
+			uiMaterialsPanel(inst);
 		if(obj->m_numEffects)
 			if(ImGui::CollapsingHeader("Effects"))
 				uiFxInfo(inst);

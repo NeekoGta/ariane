@@ -455,6 +455,10 @@ BuildPawn(const StockMap &map, const std::vector<SceneObject> &scene,
 	std::vector<bool> matched(numStock, false);
 	std::vector<const SceneObject*> created;
 	for(const SceneObject &obj : scene){
+		if(!obj.materials.empty()){
+			created.push_back(&obj);	// retextured: always an object
+			continue;
+		}
 		int cx = cellOf(obj.p.x), cy = cellOf(obj.p.y);
 		bool found = false;
 		for(int dx = -1; dx <= 1 && !found; dx++)
@@ -548,6 +552,11 @@ BuildPawn(const StockMap &map, const std::vector<SceneObject> &scene,
 		out += options.function == FUNC_STREAMER
 			? "\n// OnGameModeInit() or OnFilterScriptInit(), Streamer plugin\n"
 			: "\n// OnGameModeInit() or OnFilterScriptInit()\n";
+		bool anyMaterial = false;
+		for(const SceneObject *obj : objects)
+			anyMaterial |= !obj->materials.empty();
+		if(anyMaterial)
+			out += "new tmpobjid;\n";
 		for(const SceneObject *obj : objects){
 			const Placement &p = obj->p;
 			float rx, ry, rz;
@@ -555,6 +564,8 @@ BuildPawn(const StockMap &map, const std::vector<SceneObject> &scene,
 			bool custom = isCustom(p.modelId);
 			if(custom)
 				out += "// ";
+			if(!obj->materials.empty())
+				out += "tmpobjid = ";
 			if(options.function == FUNC_STREAMER){
 				appendf(out, "CreateDynamicObject(%d, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f",
 				        p.modelId, p.x, p.y, p.z, rx, ry, rz);
@@ -569,6 +580,13 @@ BuildPawn(const StockMap &map, const std::vector<SceneObject> &scene,
 			if(custom)
 				out += " (custom model: declare it with AddSimpleModel and use its new id)";
 			out += "\n";
+			for(const Material &m : obj->materials){
+				if(custom)
+					out += "// ";
+				appendf(out, "%s(tmpobjid, %d, %d, \"%s\", \"%s\", 0x%08X);\n",
+				        options.function == FUNC_STREAMER ? "SetDynamicObjectMaterial" : "SetObjectMaterial",
+				        m.index, m.modelId, m.txd.c_str(), m.texture.c_str(), m.color);
+			}
 		}
 	}
 

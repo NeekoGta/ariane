@@ -3,6 +3,7 @@
 #include "updater.h"
 #include "telemetry.h"
 #include "modloader.h"
+#include "bridge.h"
 #include <stdlib.h>
 
 #ifdef _WIN32
@@ -862,6 +863,7 @@ AppEventHandler(sk::Event e, void *param)
 		return EVENTPROCESSED;
 #if defined(_WIN32) && defined(RW_D3D9)
 	case RWTERMINATE:
+		Bridge::Shutdown();
 		ImGui_ImplRW_Shutdown();
 		return EVENTNOTPROCESSED; // skeleton terminates librw after the GUI releases its device
 #endif
