@@ -367,6 +367,18 @@ QuatToSampEuler(float qx, float qy, float qz, float qw, float *rx, float *ry, fl
 	*rz = wrapDegrees(*rz);
 }
 
+void
+SampEulerToQuat(float rx, float ry, float rz, float *qx, float *qy, float *qz, float *qw)
+{
+	const float half = 3.14159265358979f / 180.0f * -0.5f;
+	float cx = cosf(rx*half), cy = cosf(ry*half), cz = cosf(rz*half);
+	float sx = sinf(rx*half), sy = sinf(ry*half), sz = sinf(rz*half);
+	*qw = cx*cy*cz + sx*sy*sz;
+	*qx = cx*sy*sz + sx*cy*cz;
+	*qy = cx*sy*cz - sx*cy*sz;
+	*qz = cx*cy*sz - sx*sy*cz;
+}
+
 // The rotation the game shows, as a unit quaternion.
 static void
 effectiveQuat(const Placement &p, float q[4])

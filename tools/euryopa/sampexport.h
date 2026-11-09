@@ -90,6 +90,9 @@ Result BuildPawn(const StockMap &map, const std::vector<SceneObject> &scene,
 // SA's IPL loader treats quaternions with tiny X/Y as heading only.
 void QuatToSampEuler(float qx, float qy, float qz, float qw, float *rx, float *ry, float *rz);
 
+// The SA-MP rotation (degrees) as an IPL quaternion, as open.mp's GTAQuat(Vector3).
+void SampEulerToQuat(float rx, float ry, float rz, float *qx, float *qy, float *qz, float *qw);
+
 }
 
 // Editor window (sampexport_gui.cpp).

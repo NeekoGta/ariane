@@ -168,6 +168,9 @@ int main(int argc, char **argv)
 		eulerToQuat(c[0], c[1], c[2], q);
 		QuatToSampEuler(q[0], q[1], q[2], q[3], &rx, &ry, &rz);
 		assert(near(rx, c[0]) && near(ry, c[1]) && near(rz, c[2]));
+		float p[4];
+		SampEulerToQuat(c[0], c[1], c[2], &p[0], &p[1], &p[2], &p[3]);
+		assert(near(p[0], q[0]) && near(p[1], q[1]) && near(p[2], q[2]) && near(p[3], q[3]));
 	}
 
 	printf("ok\n");

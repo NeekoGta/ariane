@@ -2415,11 +2415,15 @@ struct CustomImportState
 	bool preferAutoCol;
 	int objectId;
 	float drawDist;
+	bool atCoordinates;	// placed at position/rotation instead of in front of the camera
+	float position[3];
+	float rotation[3];	// degrees, SA-MP Euler when gCustomImportSampRotation
 	ObjectDef previewObj;
 	char error[512];
 	char warning[512];
 };
 static CustomImportState gCustomImport = {};
+static bool gCustomImportSampRotation = true;
 static GameFile *gCustomImportIdeFile = nil;
 static GameFile *gCustomImportIplFile = nil;
 
@@ -3495,6 +3499,10 @@ resetCustomImportState(void)
 	gCustomImport.active = true;
 	gCustomImport.objectId = findSuggestedCustomImportId();
 	gCustomImport.drawDist = 300.0f;
+	rw::V3d position = GetPlacementPosition();
+	gCustomImport.position[0] = position.x;
+	gCustomImport.position[1] = position.y;
+	gCustomImport.position[2] = position.z;
 	resetCustomImportPreview();
 }
 
@@ -3824,6 +3832,18 @@ getOrCreateCustomImportGameFile(GameFile **cache, const char *logicalPath)
 	return *cache;
 }
 
+// The rotation typed at the import, as an IPL quaternion.
+static rw::Quat
+customImportRotation(void)
+{
+	const float *r = gCustomImport.rotation;
+	if(!gCustomImportSampRotation)
+		return MakeObjectRotationDegrees({ r[0], r[1], r[2] });
+	rw::Quat q;
+	SampExport::SampEulerToQuat(r[0], r[1], r[2], &q.x, &q.y, &q.z, &q.w);
+	return q;
+}
+
 static bool
 spawnCustomImportedObject(int objectId)
 {
@@ -3831,7 +3851,10 @@ spawnCustomImportedObject(int objectId)
 	if(obj == nil)
 		return false;
 
-	rw::V3d position = GetPlacementPosition();
+	rw::V3d position = gCustomImport.atCoordinates ?
+		rw::V3d{ gCustomImport.position[0], gCustomImport.position[1], gCustomImport.position[2] } :
+		GetPlacementPosition();
+	rw::Quat rotation = gCustomImport.atCoordinates ? customImportRotation() : rw::Quat{ 0.0f, 0.0f, 0.0f, 1.0f };
 	GameFile *file = IsIplMapDocumentOpen() ?
 		GetOrCreateCurrentPlacementIplFile() :
 		getOrCreateCustomImportGameFile(&gCustomImportIplFile, CUSTOM_IMPORT_IPL_LOGICAL_PATH);
@@ -3847,10 +3870,7 @@ spawnCustomImportedObject(int objectId)
 	ObjectInst *inst = AddInstance();
 	inst->m_objectId = objectId;
 	inst->m_area = currentArea;
-	inst->m_rotation.x = 0.0f;
-	inst->m_rotation.y = 0.0f;
-	inst->m_rotation.z = 0.0f;
-	inst->m_rotation.w = 1.0f;
+	inst->m_rotation = rotation;
 	inst->m_translation = position;
 	inst->m_lodId = -1;
 	inst->m_lod = nil;
@@ -3886,8 +3906,38 @@ spawnCustomImportedObject(int objectId)
 
 	ClearSelection();
 	inst->Select();
+	if(gCustomImport.atCoordinates)
+		inst->JumpTo();
 	ObjectInst *pasted[1] = { inst };
 	UndoRecordPaste(pasted, 1);
+	return true;
+}
+
+// Fills the placement from the clipboard: Ariane's "Copy transform" text, or a
+// SA-MP line (CreateObject / CreateDynamicObject, any model id).
+static bool
+pasteCustomImportPlacement(void)
+{
+	const char *text = ImGui::GetClipboardText();
+	if(text == nil)
+		return false;
+	float v[6];
+	int model;
+	if(sscanf(text, " Position %f %f %f Rotation %f %f %f", &v[0], &v[1], &v[2], &v[3], &v[4], &v[5]) == 6){
+		gCustomImportSampRotation = false;
+	}else{
+		const char *call = strstr(text, "Object(");
+		if(call == nil || sscanf(call + 7, " %d , %f , %f , %f , %f , %f , %f",
+		                         &model, &v[0], &v[1], &v[2], &v[3], &v[4], &v[5]) != 7)
+			return false;
+		gCustomImportSampRotation = true;
+	}
+	for(int i = 0; i < 6; i++)
+		if(!std::isfinite(v[i]))
+			return false;
+	memcpy(gCustomImport.position, v, sizeof(gCustomImport.position));
+	memcpy(gCustomImport.rotation, v + 3, sizeof(gCustomImport.rotation));
+	gCustomImport.atCoordinates = true;
 	return true;
 }
 
@@ -4622,7 +4672,7 @@ uiCustomImportPopup(void)
 	if(!BeginEditorDialog("Import Custom Object", &gCustomImport.active))
 		return;
 
-	ImGui::Text("Import custom object in front of camera");
+	ImGui::Text("Import custom object");
 	ImGui::TextDisabled("v1 exports to modloader/Ariane");
 	ImGui::Separator();
 	ImGui::Text("Files");
@@ -4705,6 +4755,35 @@ uiCustomImportPopup(void)
 	ImGui::Text("IDE Flags");
 	uiObjectFlagsEditor(&gCustomImport.previewObj);
 	ImGui::TextDisabled("Raw flags: 0x%X", computeFlagsFromObjectDef(&gCustomImport.previewObj));
+
+	ImGui::Separator();
+	ImGui::Text("Placement");
+	if(ImGui::RadioButton("In front of the camera", !gCustomImport.atCoordinates))
+		gCustomImport.atCoordinates = false;
+	ImGui::SameLine();
+	if(ImGui::RadioButton("At coordinates", gCustomImport.atCoordinates))
+		gCustomImport.atCoordinates = true;
+	if(gCustomImport.atCoordinates){
+		ImGui::InputFloat3("Position", gCustomImport.position, "%.4f");
+		ImGui::InputFloat3(gCustomImportSampRotation ? "Rotation (SA-MP)" : "Rotation (Ariane)",
+		                   gCustomImport.rotation, "%.4f");
+		ImGui::Checkbox("SA-MP rotation", &gCustomImportSampRotation);
+		ImGui::SetItemTooltip("Checked: the rx, ry, rz of CreateObject / CreateDynamicObject.\n"
+		                      "Unchecked: the angles of the Transform panel (Object Info).");
+		ImGui::SameLine();
+		if(ImGui::Button("Paste"))
+			if(!pasteCustomImportPlacement())
+				Toast(TOAST_SPAWN, "The clipboard holds no transform or SA-MP object line.");
+		ImGui::SetItemTooltip("Pastes the 6 values of a CreateObject / CreateDynamicObject line,\n"
+		                      "or of Copy transform in the Transform panel.");
+		ImGui::SameLine();
+		if(ImGui::Button("Camera position")){
+			rw::V3d position = GetPlacementPosition();
+			gCustomImport.position[0] = position.x;
+			gCustomImport.position[1] = position.y;
+			gCustomImport.position[2] = position.z;
+		}
+	}
 
 	if(gCustomImport.hasCol){
 		ImGui::Separator();
